@@ -1,0 +1,154 @@
+import tkinter as tk
+from tkinter import messagebox
+
+# Main application class
+class ColorfulTaskApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("TaskFrame")
+        self.task_groups = {}  # key: group_name, value: {"frame": Frame, "tasks": [...], "color": color, "total_label": Label}
+        self.colors = ["#cce5ff", "#ffddcc", "#fff5cc", "#ccffcc"]  # blue, orange, yellow, green
+        self.selected_group = None
+
+        # Define categories with keywords
+        self.categories = {
+            "WORK": ["reporting", "email", "meeting", "project", "client"],
+            "PERSONAL": ["exercise", "gym", "shopping", "call", "appointment", "read", "clean", "cook", "walk", "Pilates", "shop", "groceries", "sauna", "petrol"],
+            "UNIVERSITY": ["research", "study", "assignment", "slides", "exam", "transcript", "canvas", "submission", "pitch", "presentation", "reflection", "draft", "journal"]
+ }
+
+        # Top Frame: Task input
+        top_frame = tk.Frame(root, pady=10)
+        top_frame.pack(fill="x")
+
+        tk.Label(top_frame, text="Task:").pack(side="left", padx=(10, 5))
+        self.task_entry = tk.Entry(top_frame)
+        self.task_entry.pack(side="left", padx=5)
+
+        tk.Label(top_frame, text="Time (mins):").pack(side="left", padx=(10, 5))
+        self.time_entry = tk.Entry(top_frame, width=10)
+        self.time_entry.pack(side="left", padx=5)
+
+        add_btn = tk.Button(top_frame, text="Add Task", command=self.add_task)
+        add_btn.pack(side="left", padx=10)
+
+        # Middle Frame: Scrollable task container
+        container = tk.Frame(root)
+        container.pack(fill="both", expand=True, padx=10, pady=5)
+
+        self.canvas = tk.Canvas(container)
+        self.scrollbar = tk.Scrollbar(container, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = tk.Frame(self.canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+
+        # Bottom Frame: Action buttons
+        bottom_frame = tk.Frame(root, pady=10)
+        bottom_frame.pack(fill="x")
+
+        tk.Button(bottom_frame, text="Delete Selected Group", command=self.delete_group).pack(side="left", padx=5)
+        tk.Button(bottom_frame, text="Clear All", command=self.clear_all).pack(side="left", padx=5)
+
+    # Determines which category a task belongs to based on keywords
+    def get_task_group(self, task_name):
+        """Automatically determine group based on keywords"""
+        task_name_lower = task_name.lower()
+        for group, keywords in self.categories.items():
+            if any(keyword in task_name_lower for keyword in keywords):
+                return group
+        return "Ungrouped"
+
+    # Process of adding a task 
+    def add_task(self):
+        task_name = self.task_entry.get()
+        time_block = self.time_entry.get()
+
+        if not task_name or not time_block:
+            messagebox.showwarning("Input Error", "Please enter both task and time.")
+            return
+
+        try:
+            time_int = int(time_block)
+        except ValueError:
+            messagebox.showwarning("Input Error", "Time must be a number.")
+            return
+
+        group_name = self.get_task_group(task_name)
+
+        # Check if group already exists
+        if group_name in self.task_groups:
+            group_data = self.task_groups[group_name]
+            tk.Label(group_data["frame"], text=f"{task_name} ({time_block} min)", bg=group_data["color"], anchor="w").pack(fill="x", padx=5, pady=2)
+            group_data["tasks"].append({"name": task_name, "time": time_int})
+
+        # If the group does not exist, create it 
+        else:
+            color = self.colors[len(self.task_groups) % len(self.colors)]
+            group_frame = tk.Frame(self.scrollable_frame, bg=color, padx=5, pady=5)
+            tk.Label(group_frame, text=f"Group: {group_name}", bg=color, font=("Arial", 10, "bold")).pack(fill="x")
+            tk.Label(group_frame, text=f"{task_name} ({time_block} min)", bg=color, anchor="w").pack(fill="x", padx=5, pady=2)
+            group_frame.pack(fill="x", pady=5)
+
+            total_label = tk.Label(group_frame, text=f"Total Time: {time_int} min", bg=color, anchor="w", font=("Arial", 9, "italic"))
+            total_label.pack(fill="x", padx=5, pady=2)
+
+            self.task_groups[group_name] = {
+                "frame": group_frame,
+                "tasks": [{"name": task_name, "time": time_int}],
+                "color": color,
+                "total_label": total_label
+            }
+
+            # Allows user to select the group by clicking
+            group_frame.bind("<Button-1>", lambda e, g=group_name: self.select_group(g))
+
+        # Update total time for the group
+        self.update_group_total(group_name)
+        
+        self.task_entry.delete(0, tk.END)
+        self.time_entry.delete(0, tk.END)
+
+    # Updates the total time label for a group
+    def update_group_total(self, group_name):
+        group_data = self.task_groups[group_name]
+        total_time = sum(task["time"] for task in group_data["tasks"])
+        group_data["total_label"].config(text=f"Total Time: {total_time} min")
+
+    # Highlights the selected group when clicked
+    def select_group(self, group_name):
+        for g_name, g_data in self.task_groups.items():
+            g_data["frame"].config(relief="flat")
+        self.task_groups[group_name]["frame"].config(relief="solid", bd=2)
+        self.selected_group = group_name
+
+    # Deletes the selected group of tasks 
+    def delete_group(self):
+        if hasattr(self, "selected_group") and self.selected_group in self.task_groups:
+            self.task_groups[self.selected_group]["frame"].destroy()
+            del self.task_groups[self.selected_group]
+            self.selected_group = None
+        else:
+            messagebox.showinfo("Delete Group", "Please select a group to delete.")
+
+    # Clears all task groups
+    def clear_all(self):
+        for group_data in self.task_groups.values():
+            group_data["frame"].destroy()
+        self.task_groups.clear()
+        self.selected_group = None
+
+# Creates the main application window and starts the TaskFrame app
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.geometry("400x500")
+    app = ColorfulTaskApp(root)
+    root.mainloop()
