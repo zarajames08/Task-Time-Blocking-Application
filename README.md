@@ -7,7 +7,7 @@ Users will input their tasks and the estimated completion time and the app will 
 Features of the application:
 - Task Categorisation automatically groups task into Work, Personal or University categories based on keywords inputted during task entry
 - Colour Coding for each category enhances the user interface
-- Total Time displayed within each category shows users how much time it will take to complete all the tasks in each group
+- Total Time displayed within each category shows users how much time it will take to complete each group
 - Scrollable Interface allows users to view all task groups when lists extend beyond the middle frame
 - Buttons for adding tasks, deleting selected groups or clearing all allows users to manage their list
 
